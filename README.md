@@ -57,6 +57,6 @@ The current flow is: WhatsApp Channel â†’ listener â†’ local schema-va
 
 ## Improved Job Extraction
 
-New posts now use an OpenAI-compatible structured-output request when LLM_API_KEY is configured. Set LLM_PROVIDER=openai, LLM_MODEL (default gpt-4o-mini), and LLM_API_KEY in the ignored .env. The model receives a strict schema and must return only supported facts; WhatsApp source metadata and raw text are attached by the application. If the key is missing, the provider fails, or the response is invalid, the deterministic extractor runs and the raw post is preserved with extraction_mode=deterministic_fallback and an error reason. Unit tests inject a fake structured response and never call the network. Run 
-pm.cmd test for tests; to run a real extraction, configure the variables and publish a new Channel post.
+New posts now use an OpenAI-compatible structured-output request when LLM_API_KEY is configured. Set LLM_PROVIDER=openai, LLM_MODEL (default gpt-4o-mini), and LLM_API_KEY in the ignored .env. The model receives a strict schema and must return only supported facts; WhatsApp source metadata and raw text are attached by the application. If the key is missing, the provider fails, or the response is invalid, the deterministic extractor runs and the raw post is preserved with extraction_mode=deterministic_fallback and an error reason. Unit tests inject a fake structured response and never call the network. Run npm.cmd test for tests; to run a real extraction, configure the variables and publish a new Channel post.
+
 

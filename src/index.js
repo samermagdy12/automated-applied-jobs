@@ -100,7 +100,7 @@ ${text}
 
 ========================================
 `)
-  const job = extractJob(text, { sourcePostId: post.key?.id, sourceChannel: channel.id })
+  const job = await extractJob(text, { sourcePostId: post.key?.id, sourceChannel: channel.id })
   console.log(`
 ========================================
 ðŸ¤– JOB EXTRACTION
@@ -214,6 +214,7 @@ async function start() {
 process.on('SIGINT', () => process.exit(0))
 process.on('SIGTERM', () => process.exit(0))
 start().catch((error) => { console.error(error); process.exitCode = 1 })
+
 
 
 
