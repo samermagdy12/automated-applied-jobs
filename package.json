@@ -1,0 +1,22 @@
+{
+  "name": "whatsapp-channel-listener",
+  "version": "0.1.0",
+  "private": true,
+  "description": "POC listener for new posts in one WhatsApp Channel (Newsletter)",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "check": "node --check src/index.js && node --check src/whatsapp.js && node --check src/channel.js && node --check src/messageParser.js && node --check src/jobExtractor.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "baileys": "7.0.0-rc14",
+    "dotenv": "^16.6.1",
+    "pino": "^9.9.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
