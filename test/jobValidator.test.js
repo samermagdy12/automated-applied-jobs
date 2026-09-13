@@ -1,13 +1,8 @@
 ﻿import test from 'node:test'
 import assert from 'node:assert/strict'
-import { validateJob, qualityScore } from '../src/jobValidator.js'
-const base = (overrides={}) => ({ job_title:'AI Engineer', company:'Example', location:'Remote', employment_type:null, experience_level:null, skills:['Python','LLMs'], requirements:[], responsibilities:[], application_email:'hr@example.com', application_url:null, description:'Build AI systems', source_post_id:'id-1', source_channel:'120363427986007778@newsletter', raw_text:'AI Engineer', ...overrides })
-test('accepts valid AI job', async()=>{const r=await validateJob(base()); assert.equal(r.should_process,true); assert.equal(r.is_ai_related,true)})
-test('accepts ML job without company', async()=>{const r=await validateJob(base({company:null,job_title:'Machine Learning Engineer',skills:['Python','PyTorch']})); assert.equal(r.should_process,true)})
-test('rejects non-AI frontend job', async()=>{const r=await validateJob(base({job_title:'Frontend Developer',skills:['React','TypeScript'],description:'Build web UI'})); assert.equal(r.is_job,true); assert.equal(r.is_ai_related,false); assert.equal(r.should_process,false)})
-test('rejects course advertisement', async()=>{const r=await validateJob(base({job_title:'Generative AI Course',description:'Enroll now in our course',application_email:null})); assert.equal(r.is_job,false); assert.equal(r.should_process,false)})
-test('rejects AI job without application method', async()=>{const r=await validateJob(base({application_email:null,application_url:null})); assert.equal(r.has_application_method,false); assert.equal(r.should_process,false)})
-test('rejects missing title/content', async()=>{const r=await validateJob(base({job_title:null,description:null,skills:[],requirements:[],responsibilities:[]})); assert.equal(r.has_sufficient_information,false); assert.equal(r.should_process,false)})
-test('rejects duplicate source post id', async()=>{const seen=new Set(); await validateJob(base(),{seenPostIds:seen}); const r=await validateJob(base(),{seenPostIds:seen}); assert.equal(r.should_process,false); assert.match(r.reason,/Duplicate/)})
-test('quality score is bounded and deterministic', async()=>{const r=await validateJob(base()); assert.equal(r.quality_score,qualityScore(base())); assert.ok(r.quality_score>=0&&r.quality_score<=1)})
-test('mocked relevance classifier is used', async()=>{const r=await validateJob(base({job_title:'Data Scientist'}),{relevanceClassifier:async()=>({is_job:true,is_ai_related:false,reason:'Mock says unrelated'})}); assert.equal(r.is_ai_related,false); assert.equal(r.should_process,false); assert.match(r.reason,/Mock/)})
+import { validateBasicJob } from '../src/jobValidator.js'
+const job={job_title:'Frontend Developer',description:'Build web UI',skills:['React'],application_email:'x@y.com',source_post_id:'1'}
+test('basic validation does not classify career relevance',()=>{const r=validateBasicJob(job); assert.equal(r.is_job,true); assert.equal(r.should_match,true)})
+test('rejects missing title/content',()=>{const r=validateBasicJob({application_email:'x@y.com'}); assert.equal(r.should_match,false)})
+test('rejects missing application method',()=>{const r=validateBasicJob({...job,application_email:null}); assert.equal(r.has_application_method,false)})
+test('deduplicates post ids',()=>{const s=new Set(); assert.equal(validateBasicJob(job,{seenPostIds:s}).is_duplicate,false); assert.equal(validateBasicJob(job,{seenPostIds:s}).is_duplicate,true)})

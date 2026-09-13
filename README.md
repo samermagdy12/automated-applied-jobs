@@ -1,4 +1,4 @@
-﻿# WhatsApp Channel Listener POC
+# WhatsApp Channel Listener POC
 
 This Node.js proof of concept links a **dedicated, second WhatsApp number**, follows one public WhatsApp Channel (called a *Newsletter* internally), and prints new text/image/video-caption posts from that Channel only. It neither sends messages nor handles normal chats.
 
@@ -29,15 +29,15 @@ Followed Channel
 Listening for new posts from: AI Jobs (...@newsletter)
 ```
 
-Open the Channel in the second account to confirm the **Following** state. Then wait for a new post. Only a new text post, or an image/video post with a caption, from the configured Channel prints as `ðŸš€ NEW AI JOB DETECTED`. Posts already present at startup are intentionally ignored.
+Open the Channel in the second account to confirm the **Following** state. Then wait for a new post. Only a new text post, or an image/video post with a caption, from the configured Channel prints as `🚀 NEW AI JOB DETECTED`. Posts already present at startup are intentionally ignored.
 
 ### Historical-post test mode
 
-To verify the history-to-parser path without waiting for a new post, set `TEST_MODE=true` in `.env` and start the listener. After the Channel resolves, the listener calls Baileys' `newsletterFetchMessages(jid, count)` API for a small window and decodes its raw `message_updates > message` payloads as `WebMessageInfo`. It also captures history-sync events as a fallback. It accepts only `120363427986007778@newsletter`, prints the newest decoded post as `ðŸ§ª HISTORICAL CHANNEL POST TEST`, then continues normal live listening. Set `TEST_MODE=false` for normal production behavior.
+To verify the history-to-parser path without waiting for a new post, set `TEST_MODE=true` in `.env` and start the listener. After the Channel resolves, the listener calls Baileys' `newsletterFetchMessages(jid, count)` API for a small window and decodes its raw `message_updates > message` payloads as `WebMessageInfo`. It also captures history-sync events as a fallback. It accepts only `120363427986007778@newsletter`, prints the newest decoded post as `🧪 HISTORICAL CHANNEL POST TEST`, then continues normal live listening. Set `TEST_MODE=false` for normal production behavior.
 
 ### New-post diagnostic mode
 
-Set `NEWSLETTER_DIAGNOSTIC=true` in `.env` and run the listener. The program logs relevant `messages.upsert`, `newsletter.reaction`, `newsletter.view`, participant, and settings events strictly for `120363427986007778@newsletter`. Publish one text or captioned image/video post in the AI Jobs Channel. If actual content arrives, it prints `ðŸ§ª NEW CHANNEL POST TEST`; otherwise the diagnostic shows the metadata-only event and its structure. Set it back to `false` afterward.
+Set `NEWSLETTER_DIAGNOSTIC=true` in `.env` and run the listener. The program logs relevant `messages.upsert`, `newsletter.reaction`, `newsletter.view`, participant, and settings events strictly for `120363427986007778@newsletter`. Publish one text or captioned image/video post in the AI Jobs Channel. If actual content arrives, it prints `🧪 NEW CHANNEL POST TEST`; otherwise the diagnostic shows the metadata-only event and its structure. Set it back to `false` afterward.
 
 ## Troubleshooting
 
@@ -53,7 +53,7 @@ Run `npm.cmd run check` for syntax and `npm.cmd test` for parser tests. Channel 
 
 ## Job extraction milestone
 
-The current flow is: WhatsApp Channel â†’ listener â†’ local schema-validated Job Extraction â†’ terminal JSON. New posts with text or captions are parsed into `job_title`, company/location/employment fields, skills, requirements, responsibilities, application email/URL, description, source identifiers, and the original `raw_text`. Missing facts remain `null` or empty arrays; no external LLM or API key is required. Set `TEST_MODE=false` and `NEWSLETTER_DIAGNOSTIC=false` for normal listening, then run `npm.cmd start`. Tests run with `npm.cmd test`.
+The current flow is: WhatsApp Channel → listener → local schema-validated Job Extraction → terminal JSON. New posts with text or captions are parsed into `job_title`, company/location/employment fields, skills, requirements, responsibilities, application email/URL, description, source identifiers, and the original `raw_text`. Missing facts remain `null` or empty arrays; no external LLM or API key is required. Set `TEST_MODE=false` and `NEWSLETTER_DIAGNOSTIC=false` for normal listening, then run `npm.cmd start`. Tests run with `npm.cmd test`.
 
 ## Improved Job Extraction
 
@@ -61,7 +61,4 @@ New posts now use an OpenAI-compatible structured-output request when LLM_API_KE
 
 
 
-## Job Validation & Filtering
-
-The pipeline now runs WhatsApp Channel → Groq Job Extraction → deterministic Job Validation → ACCEPT/REJECT. Validation requires a title, meaningful job content, and an email or URL; company/location are optional. AI relevance is determined from title, skills, requirements, responsibilities, and description using explicit AI/ML terms. quality_score is a deterministic 0–1 completeness score, not a probability. source_post_id is tracked in an in-memory Set so a post is processed once per running session. CV/RAG, matching, applications, email, and LangGraph are not implemented.
-
+## Job Validation & CV Matching\r\n\r\nThe pipeline runs WhatsApp Channel ? Groq Job Extraction ? structural validation ? CV matching. Structural validation checks that an extracted record has a title, meaningful content, and an application email or URL; it does not decide whether the role fits the candidate. Duplicate `source_post_id` values are rejected during the current process, and `quality_score` is a deterministic 0�1 completeness score.\r\n\r\nCV matching uses the local profile derived only from `data/Samer_CV.pdf` (the PDF is ignored and never committed). A lightweight in-memory retrieval step selects relevant experience/projects, then scores skill and concept alignment. `MATCH_THRESHOLD` (default `0.70`) controls ACCEPT/REJECT decisions. Email generation, applications, and other downstream automation are not implemented.

@@ -7,7 +7,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "check": "node --check src/index.js && node --check src/whatsapp.js && node --check src/channel.js && node --check src/messageParser.js && node --check src/jobExtractor.js && node --check src/jobValidator.js",
+    "check": "node --check src/index.js && node --check src/whatsapp.js && node --check src/channel.js && node --check src/messageParser.js && node --check src/jobExtractor.js && node --check src/jobValidator.js && node --check src/candidateProfile.js && node --check src/cvMatcher.js",
     "test": "node --test"
   },
   "engines": {
@@ -20,4 +20,5 @@
     "qrcode-terminal": "^0.12.0"
   }
 }
+
 

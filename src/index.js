@@ -3,7 +3,8 @@ import { resolveAndFollowChannel, fetchRecentChannelPosts } from './channel.js'
 import { extractPostText, isNewsletterJid, messageTimestampMs, selectMostRecentPost } from './messageParser.js'
 import { createWhatsAppSocket } from './whatsapp.js'
 import { extractJob } from './jobExtractor.js'
-import { validateJob } from './jobValidator.js'
+import { validateBasicJob } from './jobValidator.js'
+import { matchJobToProfile } from './cvMatcher.js'
 
 const config = {
   inviteCode: process.env.CHANNEL_INVITE_CODE ?? '0029Vb8LKeD7dmeV7rf9r338',
@@ -103,7 +104,7 @@ ${text}
 ========================================
 `)
   const job = await extractJob(text, { sourcePostId: post.key?.id, sourceChannel: channel.id })
-  const validation = await validateJob(job, { seenPostIds: processedPostIds })
+  const validation = validateBasicJob(job, { seenPostIds: processedPostIds })
   console.log(`
 ========================================
 ðŸ¤– JOB EXTRACTION
@@ -217,6 +218,7 @@ async function start() {
 process.on('SIGINT', () => process.exit(0))
 process.on('SIGTERM', () => process.exit(0))
 start().catch((error) => { console.error(error); process.exitCode = 1 })
+
 
 
 

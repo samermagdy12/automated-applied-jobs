@@ -3,3 +3,6 @@ auth/
 .env
 .npm-cache/
 npm-debug.log*
+
+data/
+
