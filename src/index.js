@@ -1,4 +1,4 @@
-﻿import 'dotenv/config'
+import 'dotenv/config'
 import { resolveAndFollowChannel, fetchRecentChannelPosts } from './channel.js'
 import { extractPostText, isNewsletterJid, messageTimestampMs, selectMostRecentPost } from './messageParser.js'
 import { createWhatsAppSocket } from './whatsapp.js'
@@ -65,7 +65,7 @@ ${jsonSafe(item)}
     logger.info({ eventName, remoteJid, hasContent: Boolean(text || caption), messageType: messageType(post) }, 'Newsletter diagnostic event captured')
     if (post && (text || caption)) {
       console.log(`========================================
-ðŸ§ª NEW CHANNEL POST TEST
+ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âª NEW CHANNEL POST TEST
 ========================================
 
 Event: ${eventName}
@@ -88,32 +88,42 @@ function postIdentity(post) {
 }
 
 async function printPost(post) {
-  const text = extractPostText(post.message)
-  if (!text.trim()) return
-  const timestamp = new Date(messageTimestampMs(post)).toLocaleString('sv-SE').replace('T', ' ')
-  console.log(`
-========================================
-ðŸš€ NEW AI JOB DETECTED
-========================================
-
-Channel: ${channel.name}
-Timestamp: ${timestamp}
-
-${text}
-
-========================================
-`)
+  const text = extractPostText(post.message).trim()
+  if (!text) return
   const job = await extractJob(text, { sourcePostId: post.key?.id, sourceChannel: channel.id })
-  const validation = validateBasicJob(job, { seenPostIds: processedPostIds })
   console.log(`
 ========================================
-ðŸ¤– JOB EXTRACTION
+NEW JOB DETECTED
 ========================================
-${JSON.stringify(job, null, 2)}
-========================================
-`)
-}
 
+${job.job_title ?? 'Untitled role'}
+${job.company ?? 'Company not specified'}
+${job.location ?? 'Location not specified'}
+Apply: ${job.application_email ?? job.application_url ?? 'Not specified'}
+Extraction: ${job.extraction_mode ?? 'unknown'}
+Requirements: ${(job.requirements ?? []).length}
+Skills: ${(job.skills ?? []).length}
+`)
+  const validation = validateBasicJob(job, { seenPostIds: processedPostIds })
+  console.log('[1] JOB VALIDATION')
+  console.log(validation.should_match ? 'PASS' : `REJECT: ${validation.reason}`)
+  if (!validation.should_match) {
+    console.log('\n========================================\nFINAL DECISION: REJECT\n========================================\n')
+    return
+  }
+  const matching = matchJobToProfile(job)
+  console.log('\n[2] CV MATCHING')
+  console.log(`Match Score: ${matching.match_score == null ? 'Unavailable' : `${Math.round(matching.match_score * 100)}%`}`)
+  console.log(`Decision: ${matching.decision}`)
+  console.log(`Requirements Evaluated: ${(job.requirements ?? []).length + (job.skills ?? []).length}`)
+  console.log(`Matched:\n${matching.matched_skills.map((item) => `- ${item.skill} (${item.match_type})`).join('\n') || '- None'}`)
+  console.log(`Partial:\n${matching.partial_skills.map((item) => `- ${item.skill} (${item.evidence.join(', ')})`).join('\n') || '- None'}`)
+  console.log(`Missing:\n${matching.missing_skills.map((item) => `- ${item}`).join('\n') || '- None'}`)
+  console.log(`Relevant Experience:\n${matching.relevant_experience.map((item) => `- ${item}`).join('\n') || '- None'}`)
+  console.log(`Relevant Projects:\n${matching.relevant_projects.map((item) => `- ${item}`).join('\n') || '- None'}`)
+  console.log(`\nReason:\n${matching.reason}`)
+  console.log(`\n========================================\nFINAL DECISION: ${matching.decision}\n========================================\n`)
+}
 function captureHistoricalPost(post) {
   if (!config.testMode || post?.key?.remoteJid !== targetChannelJid || !post.message) return
   historicalPosts.set(postIdentity(post), post)
@@ -131,7 +141,7 @@ function printHistoricalTestPost(logger) {
   const text = extractPostText(post.message).trim() || '[No text or supported media caption was present in this post.]'
   console.log(`
 ========================================
-ðŸ§ª HISTORICAL CHANNEL POST TEST
+ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âª HISTORICAL CHANNEL POST TEST
 ===============================
 
 Channel: ${channel.name}

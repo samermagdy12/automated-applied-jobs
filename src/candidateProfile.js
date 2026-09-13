@@ -1,6 +1,6 @@
 ﻿export const candidateProfile = {
   source: 'data/Samer_CV.pdf',
-  skills: ['Python','C/C++','Java','TensorFlow','PyTorch','Keras','Scikit-learn','XGBoost','OpenCV','MediaPipe','YOLO','Large Language Models','Prompt Engineering','AI Agents','Function Calling','RAG','spaCy','Pandas','NumPy','Matplotlib','Plotly','Flask','Django','Streamlit','MongoDB','PostgreSQL','Git'],
+  skills: ['Python','C/C++','Java','TensorFlow','PyTorch','Keras','Scikit-learn','XGBoost','OpenCV','MediaPipe','YOLO','Large Language Models','Prompt Engineering','AI Agents','Function Calling','RAG','spaCy','Pandas','NumPy','Matplotlib','Plotly','Flask','Django','Streamlit','MongoDB','PostgreSQL','SQL','Git'],
   experience: [
     'AI & Automation Intern at Exology: LLMs, AI Agents, RAG, MCP, tool integration, structured workflows, intelligent automation.',
     'Computer Vision Intern at Cellula: ML/CV models, image segmentation, TensorFlow, PyTorch, OpenCV, healthcare and flood mapping.',
