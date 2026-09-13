@@ -1,4 +1,4 @@
-import 'dotenv/config'
+﻿import 'dotenv/config'
 import { resolveAndFollowChannel, fetchRecentChannelPosts } from './channel.js'
 import { extractPostText, isNewsletterJid, messageTimestampMs, selectMostRecentPost } from './messageParser.js'
 import { createWhatsAppSocket } from './whatsapp.js'
@@ -28,7 +28,8 @@ function jsonSafe(value, maxLength = 12000) {
     if (Buffer.isBuffer(item) || item instanceof Uint8Array) return `[binary ${item.length} bytes]`
     return item
   }, 2)
-  return text.length > maxLength ? `${text.slice(0, maxLength)}\n... [truncated]` : text
+  return text.length > maxLength ? `${text.slice(0, maxLength)}
+... [truncated]` : text
 }
 
 function messageType(message) {
@@ -45,10 +46,36 @@ function diagnosticEvent(eventName, payload, logger) {
     const post = item?.key ? item : undefined
     const text = post ? extractPostText(post.message).trim() : ''
     const caption = post?.message?.imageMessage?.caption ?? post?.message?.videoMessage?.caption ?? ''
-    console.log(`\n[NEWSLETTER DIAGNOSTIC]\nEvent: ${eventName}\nRemote JID: ${remoteJid}\nMessage ID: ${post?.key?.id ?? item?.server_id ?? 'unknown'}\nTimestamp: ${post ? new Date(messageTimestampMs(post)).toISOString() : 'unknown'}\nMessage Type: ${messageType(post)}\nActual text/caption: ${Boolean(text || caption)}\nText: ${text || '(none)'}\nCaption: ${caption || '(none)'}\nFull relevant message structure:\n${jsonSafe(item)}\n`)
+    console.log(`
+[NEWSLETTER DIAGNOSTIC]
+Event: ${eventName}
+Remote JID: ${remoteJid}
+Message ID: ${post?.key?.id ?? item?.server_id ?? 'unknown'}
+Timestamp: ${post ? new Date(messageTimestampMs(post)).toISOString() : 'unknown'}
+Message Type: ${messageType(post)}
+Actual text/caption: ${Boolean(text || caption)}
+Text: ${text || '(none)'}
+Caption: ${caption || '(none)'}
+Full relevant message structure:
+${jsonSafe(item)}
+`)
     logger.info({ eventName, remoteJid, hasContent: Boolean(text || caption), messageType: messageType(post) }, 'Newsletter diagnostic event captured')
     if (post && (text || caption)) {
-      console.log(`========================================\n🧪 NEW CHANNEL POST TEST\n========================================\n\nEvent: ${eventName}\nRemote JID: ${remoteJid}\nMessage ID: ${post.key?.id ?? 'unknown'}\nTimestamp: ${new Date(messageTimestampMs(post)).toISOString()}\nMessage Type: ${messageType(post)}\nText: ${text || '(none)'}\nCaption: ${caption || '(none)'}\nFull relevant message structure:\n${jsonSafe(post)}\n========================================\n`)
+      console.log(`========================================
+ðŸ§ª NEW CHANNEL POST TEST
+========================================
+
+Event: ${eventName}
+Remote JID: ${remoteJid}
+Message ID: ${post.key?.id ?? 'unknown'}
+Timestamp: ${new Date(messageTimestampMs(post)).toISOString()}
+Message Type: ${messageType(post)}
+Text: ${text || '(none)'}
+Caption: ${caption || '(none)'}
+Full relevant message structure:
+${jsonSafe(post)}
+========================================
+`)
     }
   }
 }
@@ -57,13 +84,30 @@ function postIdentity(post) {
   return `${post?.key?.remoteJid ?? ''}:${post?.key?.id ?? post?.newsletterServerId ?? ''}:${messageTimestampMs(post)}`
 }
 
-function printPost(post) {
+async function printPost(post) {
   const text = extractPostText(post.message)
   if (!text.trim()) return
   const timestamp = new Date(messageTimestampMs(post)).toLocaleString('sv-SE').replace('T', ' ')
-  console.log(`\n========================================\n🚀 NEW AI JOB DETECTED\n========================================\n\nChannel: ${channel.name}\nTimestamp: ${timestamp}\n\n${text}\n\n========================================\n`)
+  console.log(`
+========================================
+ðŸš€ NEW AI JOB DETECTED
+========================================
+
+Channel: ${channel.name}
+Timestamp: ${timestamp}
+
+${text}
+
+========================================
+`)
   const job = extractJob(text, { sourcePostId: post.key?.id, sourceChannel: channel.id })
-  console.log(`\n========================================\n🤖 JOB EXTRACTION\n========================================\n${JSON.stringify(job, null, 2)}\n========================================\n`)
+  console.log(`
+========================================
+ðŸ¤– JOB EXTRACTION
+========================================
+${JSON.stringify(job, null, 2)}
+========================================
+`)
 }
 
 function captureHistoricalPost(post) {
@@ -81,7 +125,19 @@ function printHistoricalTestPost(logger) {
   testPostPrinted = true
   const timestamp = new Date(messageTimestampMs(post)).toLocaleString('sv-SE').replace('T', ' ')
   const text = extractPostText(post.message).trim() || '[No text or supported media caption was present in this post.]'
-  console.log(`\n========================================\n🧪 HISTORICAL CHANNEL POST TEST\n===============================\n\nChannel: ${channel.name}\nPost ID: ${post.key?.id ?? 'unknown'}\nTimestamp: ${timestamp}\nText:\n${text}\n\n===\n`)
+  console.log(`
+========================================
+ðŸ§ª HISTORICAL CHANNEL POST TEST
+===============================
+
+Channel: ${channel.name}
+Post ID: ${post.key?.id ?? 'unknown'}
+Timestamp: ${timestamp}
+Text:
+${text}
+
+===
+`)
 }
 
 async function start() {
@@ -150,7 +206,7 @@ async function start() {
       if (seen.size > 2_000) seen.clear()
       if (messageTimestampMs(post) < startupTimestamp - 5_000) continue
       logger.info({ jid: channel.id, id: post.key?.id }, 'New Channel post detected')
-      printPost(post)
+      void printPost(post)
     }
   })
 }
@@ -158,3 +214,7 @@ async function start() {
 process.on('SIGINT', () => process.exit(0))
 process.on('SIGTERM', () => process.exit(0))
 start().catch((error) => { console.error(error); process.exitCode = 1 })
+
+
+
+
