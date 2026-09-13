@@ -60,3 +60,8 @@ The current flow is: WhatsApp Channel â†’ listener â†’ local schema-va
 New posts now use an OpenAI-compatible structured-output request when LLM_API_KEY is configured. Set LLM_PROVIDER=openai, LLM_MODEL (default gpt-4o-mini), and LLM_API_KEY in the ignored .env. The model receives a strict schema and must return only supported facts; WhatsApp source metadata and raw text are attached by the application. If the key is missing, the provider fails, or the response is invalid, the deterministic extractor runs and the raw post is preserved with extraction_mode=deterministic_fallback and an error reason. Unit tests inject a fake structured response and never call the network. Run npm.cmd test for tests; to run a real extraction, configure the variables and publish a new Channel post.
 
 
+
+## Job Validation & Filtering
+
+The pipeline now runs WhatsApp Channel → Groq Job Extraction → deterministic Job Validation → ACCEPT/REJECT. Validation requires a title, meaningful job content, and an email or URL; company/location are optional. AI relevance is determined from title, skills, requirements, responsibilities, and description using explicit AI/ML terms. quality_score is a deterministic 0–1 completeness score, not a probability. source_post_id is tracked in an in-memory Set so a post is processed once per running session. CV/RAG, matching, applications, email, and LangGraph are not implemented.
+
