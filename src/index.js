@@ -112,8 +112,9 @@ Skills: ${(job.skills ?? []).length}
     return
   }
   const matching = matchJobToProfile(job)
-  console.log('\n[2] CV MATCHING')
-  console.log(`Match Score: ${matching.match_score == null ? 'Unavailable' : `${Math.round(matching.match_score * 100)}%`}`)
+  console.log('\n[2] AI JOB RELEVANCE')
+  console.log(`AI Relevance: ${matching.ai_relevant ? 'YES' : 'NO'}`)
+  console.log(`AI Relevance Score: ${matching.match_score == null ? 'Unavailable' : `${Math.round(matching.match_score * 100)}%`}`)
   console.log(`Decision: ${matching.decision}`)
   console.log(`Requirements Evaluated: ${(job.requirements ?? []).length + (job.skills ?? []).length}`)
   console.log(`Matched:\n${matching.matched_skills.map((item) => `- ${item.skill} (${item.match_type})`).join('\n') || '- None'}`)

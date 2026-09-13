@@ -19,6 +19,16 @@ const jobText = (job) => norm([job.job_title, ...(job.skills ?? []), ...(job.req
 const canonical = (value) => skillAliases.get(norm(value)) ?? norm(value)
 const groupFor = (value) => conceptGroups.find(([, terms]) => terms.some((term) => norm(value).includes(norm(term))))?.[0]
 const unique = (items) => [...new Map(items.map((item) => [norm(item), String(item)])).values()]
+const relevanceTerms = [
+  'artificial intelligence', 'ai engineer', 'ai developer', 'ai researcher', 'ai research', 'ai powered', 'ai solutions', 'ai applications',
+  'machine learning', 'ml engineer', 'ml developer', 'deep learning', 'natural language processing', 'nlp engineer', 'computer vision',
+  'data science', 'data scientist', 'data analyst', 'generative ai', 'genai', 'large language model', 'llm', 'rag', 'retrieval augmented generation',
+  'ai agent', 'agentic ai', 'prompt engineering', 'ai automation', 'intelligent automation', 'mlops', 'neural network', 'predictive modeling',
+  'model development', 'ml pipeline', 'tensorflow', 'pytorch', 'keras', 'yolo', 'opencv', 'mediapipe', 'xgboost', 'scikit learn'
+]
+const relevanceGroups = new Set(['computer vision', 'generative ai', 'machine learning', 'nlp', 'data analysis', 'deployment'])
+const relevanceTopics = (job) => { const text = jobText(job); const groups = conceptGroups.filter(([name, terms]) => relevanceGroups.has(name) && terms.some((term) => text.includes(norm(term)))).map(([name]) => name); const explicit = relevanceTerms.filter((term) => text.includes(norm(term))); return [...new Set([...groups, ...explicit])] }
+export function isAiRelevantJob(job) { return relevanceTopics(job).length > 0 }
 
 export function retrieveCandidateContext(job, profile = candidateProfile) {
   if (!job || !profile) throw new Error('A valid job and candidate profile are required')
@@ -35,7 +45,10 @@ export function matchJobToProfile(job, profile = candidateProfile, { threshold =
   const context = retrieveCandidateContext(job, profile)
   const text = jobText(job)
   const requirements = unique(normalizeRequirements([...(job.requirements ?? []), ...(job.skills ?? [])]))
-  if (requirements.length === 0) return { match_score: null, decision: 'REVIEW', matched_skills: [], partial_skills: [], missing_skills: [], relevant_experience: [], relevant_projects: [], reason: 'Requirements could not be extracted; candidate matching was not classified.', retrieved_context: context.map((chunk) => chunk.text) }
+  const topics = relevanceTopics(job)
+  const aiRelevant = topics.length > 0
+  const relevanceScore = aiRelevant ? 1 : 0
+  if (requirements.length === 0) return { match_score: relevanceScore, ai_relevance_score: relevanceScore, ai_relevant: aiRelevant, decision: aiRelevant ? 'ACCEPT' : 'REJECT', matched_skills: [], partial_skills: [], missing_skills: [], relevant_experience: context.filter((chunk) => /Intern|Trainee/.test(chunk.text)).map((chunk) => chunk.text), relevant_projects: context.filter((chunk) => !/Intern|Trainee/.test(chunk.text)).map((chunk) => chunk.text), reason: aiRelevant ? `Accepted because the role is related to ${topics.slice(0, 4).join(', ')}; requirements were not structured enough for candidate coverage.` : 'Rejected because the job has no meaningful AI, machine learning, data science, data analysis, or related career scope.', retrieved_context: context.map((chunk) => chunk.text) }
   const matchedSkills = []
   const partialSkills = []
   const missingSkills = []
@@ -50,19 +63,16 @@ export function matchJobToProfile(job, profile = candidateProfile, { threshold =
     else missingSkills.push(requirement)
   }
   const groups = new Set(conceptGroups.filter(([, terms]) => terms.some((term) => text.includes(norm(term)) && context.some((chunk) => norm(chunk.text).includes(norm(term))))).map(([name]) => name))
-  const requiredCoverage = (matchedSkills.length + partialSkills.reduce((total, item) => total + item.evidence.length / (item.evidence.length + item.missing.length), 0)) / requirements.length
-  const evidenceScore = Math.min(1, context.length / 4)
-  const score = Number(Math.min(0.98, 0.8 * requiredCoverage + 0.2 * evidenceScore).toFixed(2))
-  const decision = score >= threshold ? 'ACCEPT' : 'REJECT'
+  const decision = aiRelevant ? 'ACCEPT' : 'REJECT'
   const evidenceWords = groups.size ? [...groups].join(', ') : 'limited overlapping skills'
   const status = missingSkills.length === 0 && partialSkills.length === 0
     ? `All ${requirements.length} requirement(s) are supported by candidate evidence`
     : `${matchedSkills.length} matched, ${partialSkills.length} partial, and ${missingSkills.length} missing requirement(s)`
   return {
-    match_score: score, decision, matched_skills: matchedSkills, partial_skills: partialSkills, missing_skills: missingSkills,
+    match_score: relevanceScore, ai_relevance_score: relevanceScore, ai_relevant: aiRelevant, decision, matched_skills: matchedSkills, partial_skills: partialSkills, missing_skills: missingSkills,
     relevant_experience: context.filter((chunk) => /Intern|Trainee/.test(chunk.text)).map((chunk) => chunk.text),
     relevant_projects: context.filter((chunk) => !/Intern|Trainee/.test(chunk.text)).map((chunk) => chunk.text),
-    reason: `${status}; ${decision === 'ACCEPT' ? 'strong' : 'limited'} ${evidenceWords} evidence supports the ${decision} decision.`,
+    reason: aiRelevant ? `Accepted because the role is related to ${topics.slice(0, 4).join(', ')}. ${status}; ${evidenceWords} CV evidence is contextual.` : `Rejected because the role has no meaningful AI career scope. ${status}; ${evidenceWords} CV evidence is contextual.`,
     retrieved_context: context.map((chunk) => chunk.text)
   }
 }
