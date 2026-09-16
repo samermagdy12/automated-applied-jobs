@@ -1,6 +1,6 @@
 # WhatsApp Channel Listener POC
 
-This Node.js proof of concept links a **dedicated, second WhatsApp number**, follows one public WhatsApp Channel (called a *Newsletter* internally), and prints new text/image/video-caption posts from that Channel only. It neither sends messages nor handles normal chats.
+This Node.js proof of concept links a **dedicated, second WhatsApp number**, follows one public WhatsApp Channel (called a *Newsletter* internally), extracts new jobs, and notifies the configured primary WhatsApp number for human approval. Approved applications can be drafted, edited, and sent by explicit command.
 
 ## Important limitations
 
@@ -29,7 +29,7 @@ Followed Channel
 Listening for new posts from: AI Jobs (...@newsletter)
 ```
 
-Open the Channel in the second account to confirm the **Following** state. Then wait for a new post. Only a new text post, or an image/video post with a caption, from the configured Channel prints as `ðŸš€ NEW AI JOB DETECTED`. Posts already present at startup are intentionally ignored.
+Open the Channel in the second account to confirm the **Following** state. Then wait for a new post. Each new text post, or image/video post with a caption, is extracted and sent to `PRIMARY_WHATSAPP_NUMBER`. Posts already present at startup are intentionally ignored.
 
 ### Historical-post test mode
 
@@ -49,7 +49,7 @@ Set `NEWSLETTER_DIAGNOSTIC=true` in `.env` and run the listener. The program log
 
 ## Local validation
 
-Run `npm.cmd run check` for syntax and `npm.cmd test` for parser tests. Channel authentication and live post receipt require the user's second WhatsApp account, so they must be completed interactively.
+Run `npm.cmd run check` for syntax and `npm.cmd test` for workflow and extraction tests. Channel authentication and live post receipt require the user's second WhatsApp account, so they must be completed interactively.
 
 ## Job extraction milestone
 
@@ -61,4 +61,8 @@ New posts now use an OpenAI-compatible structured-output request when LLM_API_KE
 
 
 
-## Job Validation & CV Matching\r\n\r\nThe pipeline runs WhatsApp Channel ? Groq Job Extraction ? structural validation ? CV matching. Structural validation checks that an extracted record has a title, meaningful content, and an application email or URL; it does not decide whether the role fits the candidate. Duplicate `source_post_id` values are rejected during the current process, and `quality_score` is a deterministic 0–1 completeness score.\r\n\r\nCV matching uses the local profile derived only from `data/Samer_CV.pdf` (the PDF is ignored and never committed). A lightweight in-memory retrieval step selects relevant experience/projects, then scores skill and concept alignment. `MATCH_THRESHOLD` (default `0.70`) controls ACCEPT/REJECT decisions. Email generation, applications, and other downstream automation are not implemented.
+## Human-in-the-loop applications
+
+The workflow is intentionally not an automatic job decision system. A detected job is stored with a unique `JOB-YYYYMMDD-NNN` ID and sent to `PRIMARY_WHATSAPP_NUMBER`. Reply `YES` or `NO`; with multiple pending jobs, include the job ID. `YES` generates an email draft using the existing candidate profile, but never sends it. Reply `SEND` to send the email with `CV_PATH` attached, `EDIT` to provide revision instructions, or `CANCEL` to discard the draft. Only the configured primary number can control these commands.
+
+Configure `PRIMARY_WHATSAPP_NUMBER`, `CV_PATH`, `WORKFLOW_STATE_PATH`, and the SMTP variables in `.env`. State is persisted under ignored `data/` by default. No ACCEPT/REJECT/REVIEW, relevance score, candidate-fit score, or confidence gate blocks job notification.

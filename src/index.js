@@ -3,8 +3,9 @@ import { resolveAndFollowChannel, fetchRecentChannelPosts } from './channel.js'
 import { extractPostText, isNewsletterJid, messageTimestampMs, selectMostRecentPost } from './messageParser.js'
 import { createWhatsAppSocket } from './whatsapp.js'
 import { extractJob } from './jobExtractor.js'
-import { validateBasicJob } from './jobValidator.js'
-import { matchJobToProfile } from './cvMatcher.js'
+import { createApprovalManager } from './approvalManager.js'
+import { createWorkflowStore } from './workflowState.js'
+import { createEmailService } from './emailService.js'
 
 const config = {
   inviteCode: process.env.CHANNEL_INVITE_CODE ?? '0029Vb8LKeD7dmeV7rf9r338',
@@ -12,6 +13,8 @@ const config = {
   catchUpCount: Number(process.env.CATCH_UP_MESSAGE_COUNT ?? 20),
   testMode: process.env.TEST_MODE?.trim().toLowerCase() === 'true',
   newsletterDiagnostic: process.env.NEWSLETTER_DIAGNOSTIC?.trim().toLowerCase() === 'true',
+  primaryWhatsAppNumber: process.env.PRIMARY_WHATSAPP_NUMBER ?? '',
+  cvPath: process.env.CV_PATH ?? 'data/Samer_CV.pdf',
 }
 
 // This is the resolved JID for the configured public AI Jobs Channel. It is
@@ -24,7 +27,7 @@ let channel
 const seen = new Set()
 const historicalPosts = new Map()
 let testPostPrinted = false
-const processedPostIds = new Set()
+let approvalManager
 
 function jsonSafe(value, maxLength = 12000) {
   const text = JSON.stringify(value, (_, item) => {
@@ -91,45 +94,14 @@ async function printPost(post) {
   const text = extractPostText(post.message).trim()
   if (!text) return
   const job = await extractJob(text, { sourcePostId: post.key?.id, sourceChannel: channel.id })
-  console.log(`
-========================================
-NEW JOB DETECTED
-========================================
-
-${job.job_title ?? 'Untitled role'}
-${job.company ?? 'Company not specified'}
-${job.location ?? 'Location not specified'}
-Apply: ${job.application_email ?? job.application_url ?? 'Not specified'}
-Extraction: ${job.extraction_mode ?? 'unknown'}
-Requirements: ${(job.requirements ?? []).length}
-Skills: ${(job.skills ?? []).length}
-`)
-  const validation = validateBasicJob(job, { seenPostIds: processedPostIds })
-  console.log('[1] JOB VALIDATION')
-  console.log(validation.should_match ? 'PASS' : `REJECT: ${validation.reason}`)
-  if (!validation.should_match) {
-    console.log('\n========================================\nFINAL DECISION: REJECT\n========================================\n')
-    return
+  console.log('[JOB] New job detected')
+  console.log(`[JOB] Extracted: ${job.job_title ?? 'title unavailable'}`)
+  console.log(`[JOB] Company: ${job.company ?? 'company unavailable'}`)
+  console.log(`[JOB] Extraction mode: ${job.extraction_mode ?? 'unknown'}`)
+  if (approvalManager) {
+    console.log('[NOTIFY] Sending job notification to primary WhatsApp')
+    try { await approvalManager.notifyJob(job) } catch (error) { console.error(`[NOTIFY] Failed: ${error.message}`) }
   }
-  const matching = matchJobToProfile(job)
-  console.log('\n[2] AI JOB RELEVANCE')
-  console.log(`AI Relevance: ${matching.ai_relevant ? 'YES' : 'NO'}`)
-  console.log(`AI Relevance Score: ${Math.round(matching.ai_relevance_score * 100)}%`)
-  console.log('\n[3] CANDIDATE FIT')
-  console.log(`Candidate Fit Score: ${Math.round(matching.candidate_fit_score * 100)}%`)
-  console.log('\n[4] FINAL DECISION')
-  console.log(`Final Confidence: ${Math.round(matching.final_confidence * 100)}%`)
-  console.log(`Confidence Level: ${matching.confidence_level}`)
-  console.log(`Decision: ${matching.decision}`)
-  console.log(`Requirements Evaluated: ${(job.requirements ?? []).length + (job.skills ?? []).length}`)
-  console.log(`AI Relevance Evidence:\n${matching.ai_relevance_evidence.map((item) => `- ${item}`).join('\n') || '- None'}`)
-  console.log(`Matched:\n${matching.matched_skills.map((item) => `- ${item.skill} (${item.match_type})`).join('\n') || '- None'}`)
-  console.log(`Partial:\n${matching.partial_skills.map((item) => `- ${item.skill} (${item.evidence.join(', ')})`).join('\n') || '- None'}`)
-  console.log(`Missing:\n${matching.missing_skills.map((item) => `- ${item}`).join('\n') || '- None'}`)
-  console.log(`Relevant Experience:\n${matching.relevant_experience.map((item) => `- ${item}`).join('\n') || '- None'}`)
-  console.log(`Relevant Projects:\n${matching.relevant_projects.map((item) => `- ${item}`).join('\n') || '- None'}`)
-  console.log(`\nReason:\n${matching.reason}`)
-  console.log(`\n========================================\nFINAL DECISION: ${matching.decision}\n========================================\n`)
 }
 function captureHistoricalPost(post) {
   if (!config.testMode || post?.key?.remoteJid !== targetChannelJid || !post.message) return
@@ -173,6 +145,10 @@ async function start() {
       }
     },
   })
+  if (config.primaryWhatsAppNumber) {
+    approvalManager = createApprovalManager({ primaryNumber: config.primaryWhatsAppNumber, store: createWorkflowStore(), sendWhatsApp: (jid, message) => sock.sendMessage(jid, { text: message }), emailService: createEmailService(), cvPath: config.cvPath, logger })
+    logger.info({ primaryJid: approvalManager.primaryJid }, 'Primary WhatsApp approval workflow enabled')
+  } else logger.warn('PRIMARY_WHATSAPP_NUMBER is not configured; job notifications are disabled')
 
   if (config.newsletterDiagnostic) {
     logger.info({ targetChannelJid }, 'NEWSLETTER_DIAGNOSTIC enabled; publish one test post in the Channel')
@@ -216,6 +192,7 @@ async function start() {
 
   sock.ev.on('messages.upsert', ({ messages, type }) => {
     for (const post of messages) {
+      if (type === 'notify' && approvalManager) void approvalManager.handleMessage(post).catch((error) => logger.error({ err: error }, 'Approval command failed'))
       // Some history paths surface messages.upsert rather than a history-set.
       // TEST_MODE captures them before normal production filtering is active.
       captureHistoricalPost(post)
